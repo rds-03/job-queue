@@ -1,0 +1,15 @@
+{
+  "name": "job-queue",
+  "version": "0.1.0",
+  "description": "A minimal background job queue built on Postgres, from scratch.",
+  "scripts": {
+    "producer": "node producer/index.js",
+    "worker": "node worker/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  },
+  "license": "MIT"
+}
