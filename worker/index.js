@@ -6,7 +6,7 @@ const sleeper =(ms)=> new Promise(resolve => setTimeout(resolve, ms));
 const processNextJob = async () => {
 
         //find jobs which are pending and run_at is less than or equal to current time.
-        const result = await pool.query('SELECT * FROM jobs WHERE status = $1 AND run_at <= now() ORDER BY created_at ASC LIMIT 1 ', ['pending']);
+        const result = await pool.query('UPDATE jobs SET status =\'processing\', updated_at =now() where id=(SELECT id FROM jobs WHERE status = $1 AND run_at <= now() ORDER BY created_at ASC LIMIT 1 for update skip locked) RETURNING *', ['pending']);
         const job = result.rows[0];
 
         if(!job){
@@ -14,7 +14,6 @@ const processNextJob = async () => {
             return ;
         }
         
-        await pool.query('UPDATE jobs SET status = $1 WHERE id = $2', ['processing', job.id]);
         try{
             console.log(`Processing job ${job.id} of type ${job.type} with payload: ${JSON.stringify(job.payload)}`);
             await sleeper(2000); // Simulate job processing time
