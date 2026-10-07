@@ -5,8 +5,9 @@ const sleeper =(ms)=> new Promise(resolve => setTimeout(resolve, ms));
 
 const processNextJob = async () => {
 
-        //find jobs which are pending and run_at is less than or equal to current time.
-        const result = await pool.query('UPDATE jobs SET status =\'processing\', updated_at =now() where id=(SELECT id FROM jobs WHERE status = $1 AND run_at <= now() ORDER BY created_at ASC LIMIT 1 for update skip locked) RETURNING *', ['pending']);
+        // Claims a pending job, or a stale 'processing' job left behind by a crashed worker (visibility timeout).
+        // FOR UPDATE SKIP LOCKED lets multiple workers claim different jobs concurrently without colliding.
+        const result = await pool.query('UPDATE jobs SET status =\'processing\', updated_at =now() where id=(SELECT id FROM jobs WHERE (status = $1 AND run_at <= now()) OR (status =$2 and updated_at <= now()-interval \'30 second\') ORDER BY created_at ASC LIMIT 1 for update skip locked) RETURNING *', ['pending', 'processing']);
         const job = result.rows[0];
 
         if(!job){
@@ -16,7 +17,16 @@ const processNextJob = async () => {
         
         try{
             console.log(`Processing job ${job.id} of type ${job.type} with payload: ${JSON.stringify(job.payload)}`);
-            await sleeper(2000); // Simulate job processing time
+            // If a reclaimed job already applied its side effect before a crash, skip redoing it.
+            // The effect is only recorded in applied_effects after it's actually been applied below.
+            const effectResult = await pool.query('SELECT * FROM applied_effects WHERE idempotency_key = $1', [job.id]);
+            if(effectResult.rows.length > 0){
+                console.log(`Job ${job.id} with idempotency key ${job.id} has already been processed. Skipping...`);
+                await pool.query('UPDATE jobs SET status = $1 WHERE id = $2', ['done', job.id]);
+                return;
+            }
+            await pool.query('INSERT INTO applied_effects (idempotency_key) VALUES ($1)', [job.id]);
+            await sleeper(15000); //long pause for process failling 
             await pool.query('UPDATE jobs SET status = $1 WHERE id = $2', ['done', job.id]);
             console.log(`Job ${job.id} completed successfully.`);
         }catch(err){

@@ -7,7 +7,7 @@ app.post('/jobs', async (req, res) => {
     try{
         const { type, payload } = req.body;
         const result = await pool.query('INSERT INTO jobs (type, payload) VALUES ($1, $2) RETURNING *', [type, payload]);
-
+        console.log(`Job ${result.rows[0].id} of type ${type} created with payload: ${JSON.stringify(payload)}`);
         res.status(201).json(result.rows[0]);
     }catch(err){
         console.error(err);
