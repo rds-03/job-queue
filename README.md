@@ -21,7 +21,7 @@ producer (Express) --> INSERT --> [ jobs table in Postgres ] <-- polls -- worker
 - [x] **v1** — basic enqueue/process loop (single worker, no retries)
 - [x] **v2** — retries with exponential backoff + dead-letter handling
 - [x] **v3** — multiple concurrent workers with safe job claiming
-- [ ] **v4** — idempotency guarantees + status dashboard
+- [x] **v4** — idempotency guarantees + status dashboard
 - [ ] **v5** — stretch goals (scheduled jobs, priority queues, rate limiting)
 
 ## Running it locally
