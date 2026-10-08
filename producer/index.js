@@ -15,6 +15,32 @@ app.post('/jobs', async (req, res) => {
     }
 
 }   );
+// Endpoint to get job statistics
+app.get('/stats', async (req, res) => {
+    try{
+        const result = await pool.query('SELECT status, COUNT(*) as count FROM jobs GROUP BY status');
+        const stats = {};
+        result.rows.forEach(row => {
+            stats[row.status] = parseInt(row.count, 10);
+        });
+        res.json(stats);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+// Endpoint to list recent jobs for the dashboard
+app.get('/jobs', async (req, res) => {
+    try{
+        const result = await pool.query('SELECT id, type, status, attempts, recent_error, created_at, updated_at FROM jobs ORDER BY id DESC LIMIT 50');
+        res.json(result.rows);
+    }catch(err){
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.use(express.static(__dirname + '/../dashboard'));
 
 app.listen(process.env.PORT, () => {
     console.log('Producer service is running on port ' + process.env.PORT);

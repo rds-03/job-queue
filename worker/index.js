@@ -33,10 +33,10 @@ const processNextJob = async () => {
             const newAttempts = job.attempts + 1;
             const delaySecond = 2**newAttempts; // Exponential backoff(2s,4s,8s...)
             if(newAttempts < MAX_ATTEMPTS){
-                await pool.query('UPDATE jobs SET status = $1, attempts = $2, run_at = now() + make_interval(secs => $4)  WHERE id = $3', ['pending', newAttempts, job.id, delaySecond]);
+                await pool.query('UPDATE jobs SET status = $1, attempts = $2, run_at = now() + make_interval(secs => $4), recent_error = $5 WHERE id = $3', ['pending', newAttempts, job.id, delaySecond, err.message]);
                 console.error(`Job ${job.id} failed with error: ${err.message}. Retrying in ${delaySecond} seconds...`);
             }else{
-                await pool.query('UPDATE jobs SET status = $1, attempts = $2 WHERE id = $3', ['dead', newAttempts, job.id]); //dead letter query
+                await pool.query('UPDATE jobs SET status = $1, attempts = $2, recent_error = $3 WHERE id = $4', ['dead', newAttempts, err.message, job.id]); //dead letter query
                 console.error(`Job ${job.id} failed after ${MAX_ATTEMPTS} attempts. Error: ${err.message}`);
             }
         }

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Job Queue Dashboard</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 16px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-card { background: #1e293b; border-radius: 8px; padding: 14px 18px; min-width: 100px; }
+  .stat-card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-card .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .status-pending .value { color: #facc15; }
+  .status-processing .value { color: #38bdf8; }
+  .status-done .value { color: #4ade80; }
+  .status-dead .value { color: #f87171; }
+  table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 8px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid #334155; }
+  th { color: #94a3b8; font-weight: 500; }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-pending { background: #422006; color: #facc15; }
+  .badge-processing { background: #0c4a6e; color: #38bdf8; }
+  .badge-done { background: #052e16; color: #4ade80; }
+  .badge-dead { background: #450a0a; color: #f87171; }
+  .error-cell { color: #f87171; font-size: 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #refreshedAt { color: #64748b; font-size: 12px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <h1>Job Queue Dashboard</h1>
+  <div id="refreshedAt"></div>
+  <div class="stats" id="stats"></div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Last Error</th><th>Updated</th></tr>
+    </thead>
+    <tbody id="jobRows"></tbody>
+  </table>
+
+  <script>
+    async function refresh() {
+      const [stats, jobs] = await Promise.all([
+        fetch('/stats').then(r => r.json()),
+        fetch('/jobs').then(r => r.json())
+      ]);
+
+      const statuses = ['pending', 'processing', 'done', 'dead'];
+      document.getElementById('stats').innerHTML = statuses.map(s => `
+        <div class="stat-card status-${s}">
+          <div class="label">${s}</div>
+          <div class="value">${stats[s] || 0}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('jobRows').innerHTML = jobs.map(j => `
+        <tr>
+          <td>${j.id}</td>
+          <td>${j.type}</td>
+          <td><span class="badge badge-${j.status}">${j.status}</span></td>
+          <td>${j.attempts}</td>
+          <td class="error-cell">${j.recent_error || ''}</td>
+          <td>${new Date(j.updated_at).toLocaleTimeString()}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('refreshedAt').textContent = 'Last refreshed: ' + new Date().toLocaleTimeString();
+    }
+
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>
