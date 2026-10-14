@@ -5,8 +5,9 @@ const app =express();
 app.use(express.json()); // for parsing  req.body
 app.post('/jobs', async (req, res) => {
     try{
-        const { type, payload } = req.body;
-        const result = await pool.query('INSERT INTO jobs (type, payload) VALUES ($1, $2) RETURNING *', [type, payload]);
+        const { type, payload,priority } = req.body;
+        const jobPriority = priority ?? 0; // Default priority to 0 if not provided
+        const result = await pool.query('INSERT INTO jobs (type, payload, priority) VALUES ($1, $2, $3) RETURNING *', [type, payload, jobPriority]);
         console.log(`Job ${result.rows[0].id} of type ${type} created with payload: ${JSON.stringify(payload)}`);
         res.status(201).json(result.rows[0]);
     }catch(err){

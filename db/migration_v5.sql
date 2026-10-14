@@ -1,0 +1,1 @@
+alter table jobs add column priority integer default 0;

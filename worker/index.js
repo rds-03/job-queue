@@ -7,7 +7,8 @@ const processNextJob = async () => {
 
         // Claims a pending job, or a stale 'processing' job left behind by a crashed worker (visibility timeout).
         // FOR UPDATE SKIP LOCKED lets multiple workers claim different jobs concurrently without colliding.
-        const result = await pool.query('UPDATE jobs SET status =\'processing\', updated_at =now() where id=(SELECT id FROM jobs WHERE (status = $1 AND run_at <= now()) OR (status =$2 and updated_at <= now()-interval \'30 second\') ORDER BY created_at ASC LIMIT 1 for update skip locked) RETURNING *', ['pending', 'processing']);
+        // The job with the highest priority (largest number) is claimed first, and among jobs with the same priority, the oldest job is claimed first.
+        const result = await pool.query('UPDATE jobs SET status =\'processing\', updated_at =now() where id=(SELECT id FROM jobs WHERE (status = $1 AND run_at <= now()) OR (status =$2 and updated_at <= now()-interval \'30 second\') ORDER BY priority DESC, created_at ASC LIMIT 1 for update skip locked) RETURNING *', ['pending', 'processing']);
         const job = result.rows[0];
 
         if(!job){
